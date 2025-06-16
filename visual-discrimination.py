@@ -52,10 +52,8 @@ def setupData(expInfo, dataDir=None):
     cats = [1, 2, 4, 5]
     category = f'cat{np.random.choice(cats)}'
     base_path = os.path.join(_thisDir, f"psycho_pilot_jf16_08122024/{category}")
-    all_subfolders = sorted([ f for f in os.listdir(base_path) 
-                             if os.path.isdir(os.path.join(base_path, f)) ])
+    all_subfolders = sorted([ f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f)) ])
 
-    # get unique pairs
     combinations = [(s, o) for s in all_subfolders for o in all_subfolders if s != o]
     random.shuffle(combinations)
 
@@ -116,14 +114,6 @@ while True:
 core.wait(0.3)
 mouse.clickReset()
 
-event.clearEvents()
-while not mouse.getPressed()[0]:
-    if 'escape' in event.getKeys():
-        win.close()
-        core.quit()
-core.wait(0.3)
-mouse.clickReset()
-
 n_trials = len(preloaded_trials)
 pause_duration = 1.5
 
@@ -145,15 +135,15 @@ for trial in range(n_trials):
 
     jitter_info = []
 
-    # Apply jitter: random size and orientation
     for img in images:
         scale_factor = random.uniform(0.8, 1.2)
-        angle = random.choice([0, 10, -10, 5, -5])
-        img.size = (300 * scale_factor, 300 * scale_factor) # this is in degrees
+        angle = random.choice([0, 10, -10, 5, -5])  # this is in degrees
+        img.size = (300 * scale_factor, 300 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
     while not clicked:
+        fixation.draw()
         for stim, pos in zip(images, positions):
             stim.pos = pos
             stim.draw()

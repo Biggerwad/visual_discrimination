@@ -1,4 +1,5 @@
 from psychopy import visual, core, event, gui, data
+from pypixxlib import tracker
 import numpy as np
 import random
 import csv
@@ -8,6 +9,9 @@ from glob import glob
 # === Setup ===
 win = visual.Window(size=[1000, 800], color="grey", units="pix")
 mouse = event.Mouse(visible=True, win=win)
+
+mini=tracker.TRACKPixxMini()
+mini.open()
 
 positions = [
     (-200, 200), (200, 200),
@@ -100,10 +104,20 @@ setupData(expInfo)
 fixation = visual.TextStim(win=win, text='+', color='white', height=40)
 welcome_msg = visual.TextStim(win=win, text="Welcome to the visual discrimination experiment. Move your mouse to the center to begin...", pos=(0, -150), color='white')
 
+left_eye = visual.Circle(win,radius=10, fillColor='red')
+right_eye = visual.Circle(win, radius=10, fillColor='blue')
+
 # Wait until mouse is within central fixation
 while True:
+    Lx, Ly, Rx, Ry = mini.getEyePosition() 
+    left_eye.pos = (Lx, Ly)
+    right_eye.pos = (Rx, Ry)
+    left_eye.draw()
+    right_eye.draw()    
+
     fixation.draw()
     welcome_msg.draw()
+    
     win.flip()
     if 'escape' in event.getKeys():
         win.close()
@@ -143,10 +157,21 @@ for trial in range(n_trials):
         jitter_info.append((round(scale_factor, 2), angle))
 
     while not clicked:
+    
         fixation.draw()
         for stim, pos in zip(images, positions):
             stim.pos = pos
             stim.draw()
+            
+        eye_position = mini.getEyePosition()
+        Lx, Ly, Rx, Ry = eye_position    
+
+        left_eye.pos = (Lx, Ly)
+        right_eye.pos = (Rx, Ry)
+
+        left_eye.draw()
+        right_eye.draw()
+
         win.flip()
 
         if 'escape' in event.getKeys():
@@ -160,6 +185,13 @@ for trial in range(n_trials):
                     response_time = rt_clock.getTime()
                     clicked = True
                     break
+
+        # for idx, stim in enumerate(images):
+        #         if stim.contains(left_eye.pos and right_eye.pos):
+        #             selected_index = idx
+        #             response_time = rt_clock.getTime()
+        #             clicked = True
+        #             break
 
     is_correct = selected_index == correct_index
 

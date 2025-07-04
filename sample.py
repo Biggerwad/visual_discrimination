@@ -10,7 +10,7 @@ from glob import glob
 win = visual.Window(size=[1000, 800], color="grey", units="pix")
 mouse = event.Mouse(visible=True, win=win)
 
-mini=tracker.TRACKPixxMini()
+mini = tracker.TRACKPixxMini()
 mini.open()
 
 positions = [
@@ -56,7 +56,7 @@ def setupData(expInfo, dataDir=None):
     cats = [1, 2, 4, 5]
     category = f'cat{np.random.choice(cats)}'
     base_path = os.path.join(_thisDir, f"psycho_pilot_jf16_08122024/{category}")
-    all_subfolders = sorted([ f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f)) ])
+    all_subfolders = sorted([f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))])
 
     combinations = [(s, o) for s in all_subfolders for o in all_subfolders if s != o]
     random.shuffle(combinations)
@@ -102,28 +102,30 @@ def setupData(expInfo, dataDir=None):
 
 setupData(expInfo)
 fixation = visual.TextStim(win=win, text='+', color='white', height=40)
-welcome_msg = visual.TextStim(win=win, text="Welcome to the visual discrimination experiment. Move your gaze to the center to begin...", pos=(0, -150), color='white')
+welcome_msg = visual.TextStim(win=win, text="Welcome to the visual discrimination experiment. Move your gaze to the center or click to begin...", pos=(0, -150), color='white')
 
-left_eye = visual.Circle(win,radius=10, fillColor='red')
-right_eye = visual.Circle(win, radius=10, fillColor='blue')
-
-# Wait until both eyes are near fixation to start
+# Welcome screen loop
 while True:
-    Lx, Ly, Rx, Ry = mini.getEyePosition() 
-    left_eye.pos = (Lx, Ly)
-    right_eye.pos = (Rx, Ry)
-    left_eye.draw()
-    right_eye.draw()    
+    try:
+        Lx, Ly, Rx, Ry = mini.getEyePosition()
+        gaze_x = (Lx + Rx) / 2
+        gaze_y = (Ly + Ry) / 2
+        gaze_point = (gaze_x, gaze_y)
+    except Exception:
+        gaze_point = (0, 0)
 
     fixation.draw()
     welcome_msg.draw()
-    
     win.flip()
+
     if 'escape' in event.getKeys():
         win.close()
         core.quit()
-    if fixation.contains((Lx, Ly)) and fixation.contains((Rx, Ry)):
+
+    # Gaze near fixation OR mouse click
+    if fixation.contains(gaze_point) or mouse.getPressed()[0]:
         break
+
 core.wait(0.3)
 mouse.clickReset()
 
@@ -150,7 +152,7 @@ for trial in range(n_trials):
 
     for img in images:
         scale_factor = random.uniform(0.8, 1.2)
-        angle = random.choice([0, 10, -10, 5, -5])  # this is in degrees
+        angle = random.choice([0, 10, -10, 5, -5])
         img.size = (300 * scale_factor, 300 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
@@ -160,12 +162,14 @@ for trial in range(n_trials):
         for stim, pos in zip(images, positions):
             stim.pos = pos
             stim.draw()
-        
-        Lx, Ly, Rx, Ry = mini.getEyePosition()
-        left_eye.pos = (Lx, Ly)
-        right_eye.pos = (Rx, Ry)
-        left_eye.draw()
-        right_eye.draw()
+
+        try:
+            Lx, Ly, Rx, Ry = mini.getEyePosition()
+            gaze_x = (Lx + Rx) / 2
+            gaze_y = (Ly + Ry) / 2
+            gaze_point = (gaze_x, gaze_y)
+        except Exception:
+            gaze_point = None
 
         win.flip()
 
@@ -173,16 +177,23 @@ for trial in range(n_trials):
             win.close()
             core.quit()
 
-        gaze_x = (Lx + Rx) / 2
-        gaze_y = (Ly + Ry) / 2
-        gaze_point = (gaze_x, gaze_y)
+        # Gaze-based selection
+        if gaze_point:
+            for idx, stim in enumerate(images):
+                if stim.contains(gaze_point):
+                    selected_index = idx
+                    response_time = rt_clock.getTime()
+                    clicked = True
+                    break
 
-        for idx, stim in enumerate(images):
-            if stim.contains(gaze_point):
-                selected_index = idx
-                response_time = rt_clock.getTime()
-                clicked = True
-                break
+        # Fallback: mouse click selection
+        if not clicked and mouse.getPressed()[0]:
+            for idx, stim in enumerate(images):
+                if stim.contains(mouse):
+                    selected_index = idx
+                    response_time = rt_clock.getTime()
+                    clicked = True
+                    break
 
     is_correct = selected_index == correct_index
 

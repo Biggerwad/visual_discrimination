@@ -1,4 +1,4 @@
-from psychopy import visual, core, event, gui, data
+from psychopy import visual, core, event, gui, data, sound
 import numpy as np
 import random
 import csv
@@ -50,19 +50,16 @@ for key, val in expInfo.copy().items():
 
 # Preload trials and set up the filename and header for data saving
 preloaded_trials = []
+response_time = 0
 used_trial_signatures = set()
 filename = ''
 header = []
 image_array = []
 
-# category = ''
-
 # function for image selection and permutation
 def permute_images():
     cats = [1, 2, 4, 5]
-    # stimulus = []
 
-    # for number of repetitions
     # Generate 1200 combinations based on the new algorithm
     for cat in cats:
         for i in range(1, 11):
@@ -81,7 +78,7 @@ def permute_images():
                 if len(similar_images) >= 5 and len(odd_images) >= 5:
                     mid_img = similar_images[len(similar_images) // 2]
                     odd_img_path = odd_images[len(odd_images) // 2]
-                    
+
                     # ensure the mid_img and odd_img_path are not the same
                     trial_signature = tuple(sorted([mid_img, odd_img_path]))
                     if trial_signature in used_trial_signatures:
@@ -89,53 +86,46 @@ def permute_images():
 
                     used_trial_signatures.add(trial_signature)
 
-                    # create the stimuli for the trial
                     # create 3 similar images and one odd image
                     sim_stims = [visual.ImageStim(win, image=mid_img, size=(900, 900), units='pix') for _ in range(3)]
                     odd_stim = visual.ImageStim(win, image=odd_img_path, size=(900, 900), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
 
-
 # Function to set up the data for the experiment
 def setupData(expInfo, dataDir=None):
     permute_images()
-    # duplicate loop
-    LIMIT = 3
-    # Updated vector combination logic
-    for set in range(LIMIT):
-        # Append 400 images to the preloaded trials
+    LIMIT = 3  # number of repetitions of the image array
+
+    for _ in range(LIMIT):
         random.shuffle(image_array)
         preloaded_trials.extend(image_array)
-        # append 1200 images into preloaded_trials
-        # permute_images()
-
-    # shuffle the preloaded trials to randomize the order
-    # random.shuffle(preloaded_trials)
 
     if dataDir is None:
         dataDir = _thisDir
+
     global filename
-    # create a filename based on participant, experiment name, and date
-    
     filename = os.path.join(dataDir, f"data/{expInfo['participant']}_{expName}_{expInfo['date']}.csv")
 
+    global header
     header = ['participant', 'name', 'start_time', 'end_time',
               'category', 'selected_image', 'image_position',
               'jitter_var', 'correct', 'reaction_time', 'sim_img_path', 'odd_img_path']
+
+    if not os.path.exists(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
 
     if not os.path.exists(filename):
         with open(filename, 'w', newline='') as f:
             writer = csv.writer(f)
             writer.writerow(header)
-    # return filename
 
 setupData(expInfo)
 
 # create fixation and welcome message
-fixation = visual.TextStim(win=win, text='+', color='white', height=40)
+fixation = visual.TextStim(win=win, text='+', color='white', height=50)
 welcome_msg = visual.TextStim(
     win=win,
-    text="Welcome to the visual discrimination experiment. Move your mouse to the center to begin...",
+    text="Welcome to the visual discrimination experiment. Fixate on the cross to begin...",
     pos=(0, -150),
     color='white'
 )
@@ -157,6 +147,7 @@ mouse.clickReset()
 
 n_trials = len(preloaded_trials)
 pause_duration = 1.5
+correct_sound = sound.Sound("beep-02.wav")
 
 for trial in range(n_trials):
     # display fixation for brief moment before showing images
@@ -166,15 +157,13 @@ for trial in range(n_trials):
 
     similar_imgs, odd_img, sim_path, odd_path, category = preloaded_trials[trial]
 
-    # mix the similar and odd images together and randomize them
     images = similar_imgs + [odd_img]
     random.shuffle(images)
     correct_index = images.index(odd_img)
 
     clicked = False
-    selected_index = None
+    selected_index = -1
     rt_clock = core.Clock()
-    rt_clock.reset()
 
     jitter_info = []
 
@@ -186,13 +175,32 @@ for trial in range(n_trials):
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
+    # Fixate before drawing the stimuli
+    while True:
+        fixation.draw()
+        win.flip()
+        if 'escape' in event.getKeys():
+            win.close()
+            core.quit()
+        if fixation.contains(mouse):
+            if mouse.getPressed()[0]:
+                while mouse.getPressed()[0]:  
+                    pass
+                mouse.clickReset()  
+                break
+
+    rt_clock.reset()
+
     # Display the stimuli until a click is registered
     while not clicked:
         fixation.draw()
         for stim, pos in zip(images, positions):
             stim.pos = pos
             stim.draw()
+
         win.flip()
+        if rt_clock.getTime() >= 2.0:
+            break
 
         if 'escape' in event.getKeys():
             win.close()
@@ -205,14 +213,17 @@ for trial in range(n_trials):
                     response_time = rt_clock.getTime()
                     clicked = True
                     break
+            
+            # if there is a no mouse click 
+            if selected_index == -1:
+                mouse.clickReset()
+                break
 
-    # check correctness
-    if random.choice(similar_imgs) == odd_img:
+    if sim_path == odd_path:
         is_correct = True
     else:
         is_correct = selected_index == correct_index
 
-    # log trial result
     with open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
         writer.writerow([
@@ -222,7 +233,7 @@ for trial in range(n_trials):
             round(response_time, 3),
             category,
             selected_index,
-            positions[selected_index],
+            positions[selected_index] if selected_index != -1 else None,
             jitter_info,
             is_correct,
             round(response_time, 3),
@@ -230,15 +241,17 @@ for trial in range(n_trials):
             odd_path
         ])
 
-    # provide feedback based on response
-    if is_correct:
+    if selected_index != -1 and is_correct:
+        correct_sound.play()
         win.flip()
         core.wait(0.5)
-    else:
+    elif selected_index != -1 and not is_correct:
         msg = visual.TextStim(win=win, text='Incorrect choice', color='red')
         msg.draw()
         win.flip()
         core.wait(pause_duration)
+    else:
+        pass
 
     mouse.clickReset()
 

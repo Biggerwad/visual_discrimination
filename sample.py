@@ -1,4 +1,4 @@
-from psychopy import visual, core, event, gui, data
+from psychopy import visual, core, event, gui, data, sound
 from pypixxlib import tracker
 import numpy as np
 import random
@@ -7,7 +7,7 @@ import os
 from glob import glob
 
 # === Setup ===
-win = visual.Window(size=[1000, 800], color="grey", units="pix")
+win = visual.Window(fullscr=True, units='pix') 
 mouse = event.Mouse(visible=True, win=win)
 
 mini = tracker.TRACKPixxMini()
@@ -42,58 +42,71 @@ for key, val in expInfo.copy().items():
     newKey, _ = data.utils.parsePipeSyntax(key)
     expInfo[newKey] = expInfo.pop(key)
 
+# Preload trials and set up the filename and header for data saving
 preloaded_trials = []
+response_time = 0
 used_trial_signatures = set()
 filename = ''
 header = []
-category = ''
+image_array = []
 
-DESIRED_TRIALS = 60
-
-def setupData(expInfo, dataDir=None):
-    global preloaded_trials, filename, header, category
-
+# function for image selection and permutation
+def permute_images():
     cats = [1, 2, 4, 5]
-    category = f'cat{np.random.choice(cats)}'
-    base_path = os.path.join(_thisDir, f"psycho_pilot_jf16_08122024/{category}")
-    all_subfolders = sorted([f for f in os.listdir(base_path) if os.path.isdir(os.path.join(base_path, f))])
 
-    combinations = [(s, o) for s in all_subfolders for o in all_subfolders if s != o]
-    random.shuffle(combinations)
+    # Generate 1200 combinations based on the new algorithm
+    for cat in cats:
+        for i in range(1, 11):
+            for j in range(1, 11):
+                order = (cat, i, j)
+                category = order[0]
 
-    for similar_folder, odd_folder in combinations:
-        if len(preloaded_trials) >= DESIRED_TRIALS:
-            break
+                base_path = os.path.join(_thisDir, f"image_folder/cat{category}")
+                similar_path = os.path.join(base_path, f"img{str(order[1])}")
+                odd_path = os.path.join(base_path, f"img{str(order[2])}")
 
-        similar_path = os.path.join(base_path, similar_folder)
-        odd_path = os.path.join(base_path, odd_folder)
+                # create array of sorted similar and odd images
+                similar_images = sorted(glob(os.path.join(similar_path, '*.png')))
+                odd_images = sorted(glob(os.path.join(odd_path, '*.png')))
 
-        similar_images = sorted(glob(os.path.join(similar_path, '*.png')))
-        odd_candidates = sorted(glob(os.path.join(odd_path, '*.png')))
+                if len(similar_images) >= 5 and len(odd_images) >= 5:
+                    mid_img = similar_images[len(similar_images) // 2]
+                    odd_img_path = odd_images[len(odd_images) // 2]
 
-        if len(similar_images) >= 5 and odd_candidates:
-            mid_img = similar_images[len(similar_images) // 2]
-            odd_img_path = random.choice(odd_candidates)
+                    # ensure the mid_img and odd_img_path are not the same
+                    trial_signature = tuple(sorted([mid_img, odd_img_path]))
+                    if trial_signature in used_trial_signatures:
+                        continue
 
-            trial_signature = tuple(sorted([mid_img, odd_img_path]))
-            if trial_signature in used_trial_signatures:
-                continue
+                    used_trial_signatures.add(trial_signature)
 
-            used_trial_signatures.add(trial_signature)
+                    # create 3 similar images and one odd image
+                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(1500, 1500), units='pix') for _ in range(3)]
+                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(1500, 1500), units='pix')
+                    image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
 
-            sim_stims = [visual.ImageStim(win, image=mid_img, size=(600, 600), units='pix') for _ in range(3)]
-            odd_stim = visual.ImageStim(win, image=odd_img_path, size=(600, 600), units='pix')
+# Function to set up the data for the experiment
+def setupData(expInfo, dataDir=None):
+    permute_images()
+    LIMIT = 3  # number of repetitions of the image array
 
-            preloaded_trials.append((sim_stims, odd_stim, mid_img, odd_img_path))
+    for _ in range(LIMIT):
+        random.shuffle(image_array)
+        preloaded_trials.extend(image_array)
 
     if dataDir is None:
         dataDir = _thisDir
 
+    global filename
     filename = os.path.join(dataDir, f"data/{expInfo['participant']}_{expName}_{expInfo['date']}.csv")
 
+    global header
     header = ['participant', 'name', 'start_time', 'end_time',
               'category', 'selected_image', 'image_position',
               'jitter_var', 'correct', 'reaction_time', 'sim_img_path', 'odd_img_path']
+
+    if not os.path.exists(os.path.dirname(filename)):
+        os.makedirs(os.path.dirname(filename))
 
     if not os.path.exists(filename):
         with open(filename, 'w', newline='') as f:
@@ -101,13 +114,27 @@ def setupData(expInfo, dataDir=None):
             writer.writerow(header)
 
 setupData(expInfo)
-fixation = visual.TextStim(win=win, text='+', color='white', height=40)
-welcome_msg = visual.TextStim(win=win, text="Welcome to the visual discrimination experiment. Move your gaze to the center or click to begin...", pos=(0, -150), color='white')
+# create fixation and welcome message
+fixation = visual.TextStim(win=win, text='+', color='white', height=50)
+welcome_msg = visual.TextStim(
+    win=win,
+    text="Welcome to the visual discrimination experiment. Fixate on the cross to begin...",
+    pos=(0, -150),
+    color='white'
+)
+
+left_eye = visual.Circle(win,radius=10, fillColor='red')
+right_eye = visual.Circle(win, radius=10, fillColor='blue')
 
 # Welcome screen loop
 while True:
+    Lx, Ly, Rx, Ry = mini.getEyePosition() 
+    left_eye.pos = (Lx, Ly)
+    right_eye.pos = (Rx, Ry)
+    left_eye.draw()
+    right_eye.draw()    
+
     try:
-        Lx, Ly, Rx, Ry = mini.getEyePosition()
         gaze_x = (Lx + Rx) / 2
         gaze_y = (Ly + Ry) / 2
         gaze_point = (gaze_x, gaze_y)
@@ -123,7 +150,7 @@ while True:
         core.quit()
 
     # Gaze near fixation OR mouse click
-    if fixation.contains(gaze_point) or mouse.getPressed()[0]:
+    if fixation.contains(gaze_point):
         break
 
 core.wait(0.3)
@@ -131,22 +158,22 @@ mouse.clickReset()
 
 n_trials = len(preloaded_trials)
 pause_duration = 1.5
+correct_sound = sound.Sound("beep-02.wav")
 
 for trial in range(n_trials):
     fixation.draw()
     win.flip()
     core.wait(0.5)
 
-    similar_imgs, odd_img, sim_path, odd_path = preloaded_trials[trial]
+    similar_imgs, odd_img, sim_path, odd_path, category = preloaded_trials[trial]
 
     images = similar_imgs + [odd_img]
     random.shuffle(images)
     correct_index = images.index(odd_img)
 
     clicked = False
-    selected_index = None
+    selected_index = -1
     rt_clock = core.Clock()
-    rt_clock.reset()
 
     jitter_info = []
 
@@ -157,9 +184,54 @@ for trial in range(n_trials):
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
+    # Fixate before drawing the stimuli
+    while True:
+        fixation.draw()
+        Lx, Ly, Rx, Ry = mini.getEyePosition() 
+        left_eye.pos = (Lx, Ly)
+        right_eye.pos = (Rx, Ry)
+        left_eye.draw()
+        right_eye.draw()
+        
+        win.flip()
+        
+        try:
+            gaze_x = (Lx + Rx) / 2
+            gaze_y = (Ly + Ry) / 2
+            gaze_point = (gaze_x, gaze_y)
+        except Exception:
+            gaze_point = (0, 0)
+
+
+        if 'escape' in event.getKeys():
+            win.close()
+            core.quit()
+
+        if fixation.contains(gaze_point):
+                break
+
+    #    if fixation.contains(mouse):
+    #        if mouse.getPressed()[0]:
+    #            while mouse.getPressed()[0]:  
+    #                pass
+    #            mouse.clickReset()  
+    #            break
+
+    rt_clock.reset()
+
+    # Display the stimuli until a click is registered
     while not clicked:
         fixation.draw()
+        Lx, Ly, Rx, Ry = mini.getEyePosition() 
+        left_eye.pos = (Lx, Ly)
+        right_eye.pos = (Rx, Ry)
+        left_eye.draw()
+        right_eye.draw()
+
+        
         for stim, pos in zip(images, positions):
+            # SYNC THE IMAGE INDEX WITH THE CIRCLE BELOW
+            visual.Circle(win, fillColor="red", radius=100)
             stim.pos = pos
             stim.draw()
 
@@ -172,6 +244,8 @@ for trial in range(n_trials):
             gaze_point = None
 
         win.flip()
+        if rt_clock.getTime() >= 2.0:
+            break
 
         if 'escape' in event.getKeys():
             win.close()
@@ -195,7 +269,15 @@ for trial in range(n_trials):
                     clicked = True
                     break
 
-    is_correct = selected_index == correct_index
+            # if there is a no mouse click 
+            if selected_index == -1:
+                mouse.clickReset()
+                break
+
+    if sim_path == odd_path:
+        is_correct = True
+    else:
+        is_correct = selected_index == correct_index
 
     with open(filename, 'a', newline='') as f:
         writer = csv.writer(f)
@@ -214,14 +296,17 @@ for trial in range(n_trials):
             odd_path
         ])
 
-    if is_correct:
+    if selected_index != -1 and is_correct:
+        correct_sound.play()
         win.flip()
         core.wait(0.5)
-    else:
+    elif selected_index != -1 and not is_correct:
         msg = visual.TextStim(win=win, text='Incorrect choice', color='red')
         msg.draw()
         win.flip()
         core.wait(pause_duration)
+    else:
+        pass
 
     mouse.clickReset()
 

@@ -6,8 +6,24 @@ import csv
 import os
 from glob import glob
 
+# Next fix: Reaction time = End time - Start time
+            # Give location of target and distractor images
+
+# === CONSTANTS ===
+
+# PRIMARY MONITOR 
+PRIMARY_MONITOR_X = 1920
+PRIMARY_MONITOR_Y = 1080
+
+# SECONDARY MONITOR
+SECONDARY_MONITOR_X = 1280
+SECONDARY_MONITOR_Y = 1024
+
+OFFSET = 50
+
 # === Setup ===
-win = visual.Window(fullscr=True, units='pix') 
+win = visual.Window(size=[1280, 1024],fullscr=True, monitor='secondMonitor', screen=1, units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
+
 mouse = event.Mouse(visible=True, win=win)
 
 mini = tracker.TRACKPixxMini()
@@ -126,9 +142,17 @@ welcome_msg = visual.TextStim(
 left_eye = visual.Circle(win,radius=10, fillColor='red')
 right_eye = visual.Circle(win, radius=10, fillColor='blue')
 
+
+
 # Welcome screen loop
 while True:
-    Lx, Ly, Rx, Ry = mini.getEyePosition() 
+    Lx, Ly, Rx, Ry = mini.getEyePosition()
+
+    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
+    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
+    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
     left_eye.draw()
@@ -162,6 +186,15 @@ correct_sound = sound.Sound("beep-02.wav")
 
 for trial in range(n_trials):
     fixation.draw()
+    Lx, Ly, Rx, Ry = mini.getEyePosition()
+
+    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
+    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
+    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+
+    left_eye.pos = (Lx, Ly)
+    right_eye.pos = (Rx, Ry)
     win.flip()
     core.wait(0.5)
 
@@ -210,21 +243,18 @@ for trial in range(n_trials):
         if fixation.contains(gaze_point):
                 break
 
-    #    if fixation.contains(mouse):
-    #        if mouse.getPressed()[0]:
-    #            while mouse.getPressed()[0]:  
-    #                pass
-    #            mouse.clickReset()  
-    #            break
+        # if fixation.contains(mouse):
+        #    if mouse.getPressed()[0]:
+        #        while mouse.getPressed()[0]:  
+        #            pass
+        #        mouse.clickReset()  
+        #        break
 
     rt_clock.reset()
 
     # Display the stimuli until a click is registered
     while not clicked:
         fixation.draw()
-        Lx, Ly, Rx, Ry = mini.getEyePosition() 
-        left_eye.pos = (Lx, Ly)
-        right_eye.pos = (Rx, Ry)
         left_eye.draw()
         right_eye.draw()
 
@@ -261,13 +291,13 @@ for trial in range(n_trials):
                     break
 
         # Fallback: mouse click selection
-        if not clicked and mouse.getPressed()[0]:
-            for idx, stim in enumerate(images):
-                if stim.contains(mouse):
-                    selected_index = idx
-                    response_time = rt_clock.getTime()
-                    clicked = True
-                    break
+        # if not clicked and mouse.getPressed()[0]:
+        #     for idx, stim in enumerate(images):
+        #         if stim.contains(mouse):
+        #             selected_index = idx
+        #             response_time = rt_clock.getTime()
+        #             clicked = True
+        #             break
 
             # if there is a no mouse click 
             if selected_index == -1:

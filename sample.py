@@ -8,7 +8,10 @@ from glob import glob
 
 # Next fix: Reaction time = End time - Start time
             # Give location of target and distractor images
-
+            
+# updates 
+            #  setup function for gaze calculatin to call regularly
+            # 
 # === CONSTANTS ===
 
 # PRIMARY MONITOR 
@@ -21,6 +24,8 @@ SECONDARY_MONITOR_Y = 1024
 
 OFFSET = 50
 
+# FRAME DURATION
+DURATION = 3.00
 # === Setup ===
 win = visual.Window(size=[1280, 1024],fullscr=True, monitor='secondMonitor', screen=1, units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
 
@@ -30,8 +35,8 @@ mini = tracker.TRACKPixxMini()
 mini.open()
 
 positions = [
-    (-200, 200), (200, 200),
-    (-200, -200), (200, -200)
+    (-400, 400), (400, 400),
+    (-400, -400), (400, -400)
 ]
 
 psychopyVersion = '2025.1.0dev137'
@@ -97,8 +102,8 @@ def permute_images():
                     used_trial_signatures.add(trial_signature)
 
                     # create 3 similar images and one odd image
-                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(1500, 1500), units='pix') for _ in range(3)]
-                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(1500, 1500), units='pix')
+                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(600, 600), units='pix') for _ in range(3)]
+                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(600, 600), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
 
 # Function to set up the data for the experiment
@@ -114,12 +119,12 @@ def setupData(expInfo, dataDir=None):
         dataDir = _thisDir
 
     global filename
-    filename = os.path.join(dataDir, f"data/{expInfo['participant']}_{expName}_{expInfo['date']}.csv")
+    filename = os.path.join(dataDir, f"data/{expInfo['participant']}_{expInfo['name']}_{expInfo['date']}.csv")
 
     global header
     header = ['participant', 'name', 'start_time', 'end_time',
-              'category', 'selected_image', 'image_position',
-              'jitter_var', 'correct', 'reaction_time', 'sim_img_path', 'odd_img_path']
+              'category', 'selected_image',
+              'jitter_var', 'correct', 'reaction_time', 'target', 'distractor']
 
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
@@ -184,6 +189,7 @@ n_trials = len(preloaded_trials)
 pause_duration = 1.5
 correct_sound = sound.Sound("beep-02.wav")
 
+# LOAD IMAGE TIME
 for trial in range(n_trials):
     fixation.draw()
     Lx, Ly, Rx, Ry = mini.getEyePosition()
@@ -196,7 +202,6 @@ for trial in range(n_trials):
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
     win.flip()
-    core.wait(0.5)
 
     similar_imgs, odd_img, sim_path, odd_path, category = preloaded_trials[trial]
 
@@ -207,7 +212,8 @@ for trial in range(n_trials):
     clicked = False
     selected_index = -1
     rt_clock = core.Clock()
-
+    
+    stim_time = 0.00
     jitter_info = []
 
     for img in images:
@@ -218,7 +224,7 @@ for trial in range(n_trials):
         jitter_info.append((round(scale_factor, 2), angle))
 
     # Fixate before drawing the stimuli
-    while True:
+    while not clicked:
         fixation.draw()
         Lx, Ly, Rx, Ry = mini.getEyePosition() 
         left_eye.pos = (Lx, Ly)
@@ -235,13 +241,12 @@ for trial in range(n_trials):
         except Exception:
             gaze_point = (0, 0)
 
-
         if 'escape' in event.getKeys():
             win.close()
             core.quit()
 
         if fixation.contains(gaze_point):
-                break
+                clicked = True
 
         # if fixation.contains(mouse):
         #    if mouse.getPressed()[0]:
@@ -250,17 +255,20 @@ for trial in range(n_trials):
         #        mouse.clickReset()  
         #        break
 
-    rt_clock.reset()
+    # rt_clock.reset()
 
     # Display the stimuli until a click is registered
-    while not clicked:
+    clicked = False
+    stim_time = core.Clock()
+
+    while not clicked and stim_time.getTime() <= DURATION:
         fixation.draw()
         left_eye.draw()
         right_eye.draw()
-
         
         for stim, pos in zip(images, positions):
             # SYNC THE IMAGE INDEX WITH THE CIRCLE BELOW
+            # if circle contains image and gaze select!
             visual.Circle(win, fillColor="red", radius=100)
             stim.pos = pos
             stim.draw()
@@ -274,8 +282,10 @@ for trial in range(n_trials):
             gaze_point = None
 
         win.flip()
-        if rt_clock.getTime() >= 2.0:
-            break
+
+       
+        if stim_time.getTime() >= DURATION:
+            clicked = True
 
         if 'escape' in event.getKeys():
             win.close()
@@ -308,24 +318,9 @@ for trial in range(n_trials):
         is_correct = True
     else:
         is_correct = selected_index == correct_index
+        #  if selected_index == -1, set is_correct = false
 
-    with open(filename, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            expInfo['participant'],
-            expInfo['name'],
-            round(rt_clock.getTime(), 3),
-            round(response_time, 3),
-            category,
-            selected_index,
-            positions[selected_index],
-            jitter_info,
-            is_correct,
-            round(response_time, 3),
-            sim_path,
-            odd_path
-        ])
-
+    # VALIDATOR
     if selected_index != -1 and is_correct:
         correct_sound.play()
         win.flip()
@@ -337,6 +332,24 @@ for trial in range(n_trials):
         core.wait(pause_duration)
     else:
         pass
+
+    with open(filename, 'a', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            # expInfo['participant'],
+            # expInfo['name'],
+            round(rt_clock.getTime(), 3),
+            round(response_time, 3),
+            category,
+            selected_index,
+            # positions[selected_index],
+            jitter_info,
+            is_correct,
+            # round(response_time, 3),
+            sim_path,
+            odd_path
+        ])
+
 
     mouse.clickReset()
 

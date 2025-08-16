@@ -25,7 +25,7 @@ SECONDARY_MONITOR_Y = 1024
 OFFSET = 50
 
 # FRAME DURATION
-DURATION = 3.00
+DURATION = 3
 # === Setup ===
 win = visual.Window(size=[1280, 1024],fullscr=True, monitor='secondMonitor', screen=1, units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
 
@@ -33,6 +33,8 @@ mouse = event.Mouse(visible=True, win=win)
 
 mini = tracker.TRACKPixxMini()
 mini.open()
+
+# set variable for generic radius
 
 positions = [
     (-400, 400), (400, 400),
@@ -92,6 +94,7 @@ def permute_images():
 
                 if len(similar_images) >= 5 and len(odd_images) >= 5:
                     mid_img = similar_images[len(similar_images) // 2]
+
                     odd_img_path = odd_images[len(odd_images) // 2]
 
                     # ensure the mid_img and odd_img_path are not the same
@@ -102,8 +105,9 @@ def permute_images():
                     used_trial_signatures.add(trial_signature)
 
                     # create 3 similar images and one odd image
-                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(600, 600), units='pix') for _ in range(3)]
-                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(600, 600), units='pix')
+                    # set variable for dynamic size factor
+                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(2000, 2000), units='pix') for _ in range(3)]
+                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(2000, 2000), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
 
 # Function to set up the data for the experiment
@@ -122,7 +126,7 @@ def setupData(expInfo, dataDir=None):
     filename = os.path.join(dataDir, f"data/{expInfo['participant']}_{expInfo['name']}_{expInfo['date']}.csv")
 
     global header
-    header = ['participant', 'name', 'start_time', 'end_time',
+    header = ['start_time', 'end_time',
               'category', 'selected_image',
               'jitter_var', 'correct', 'reaction_time', 'target', 'distractor']
 
@@ -209,24 +213,30 @@ for trial in range(n_trials):
     random.shuffle(images)
     correct_index = images.index(odd_img)
 
-    clicked = False
-    selected_index = -1
+    fixed = False
+    # selected_index = -1
     rt_clock = core.Clock()
     
-    stim_time = 0.00
     jitter_info = []
 
     for img in images:
         scale_factor = random.uniform(0.8, 1.2)
         angle = random.choice([0, 10, -10, 5, -5])
-        img.size = (300 * scale_factor, 300 * scale_factor)
+        # give variable for dynamic scale factor
+        img.size = (200 * scale_factor, 200 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
     # Fixate before drawing the stimuli
-    while not clicked:
+    while not fixed:
         fixation.draw()
         Lx, Ly, Rx, Ry = mini.getEyePosition() 
+        
+        Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
+        Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
+        Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+        Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+        
         left_eye.pos = (Lx, Ly)
         right_eye.pos = (Rx, Ry)
         left_eye.draw()
@@ -246,7 +256,7 @@ for trial in range(n_trials):
             core.quit()
 
         if fixation.contains(gaze_point):
-                clicked = True
+                fixed = True
 
         # if fixation.contains(mouse):
         #    if mouse.getPressed()[0]:
@@ -257,35 +267,45 @@ for trial in range(n_trials):
 
     # rt_clock.reset()
 
-    # Display the stimuli until a click is registered
-    clicked = False
+    # Display the stimuli images until a fixation is acquired or there is a time out
+    # fixed = False
     stim_time = core.Clock()
+    # rt_clock = core.Clock()
+    selected_index = -1
+    response_time = None
+    start_time = rt_clock.getTime()
 
-    while not clicked and stim_time.getTime() <= DURATION:
-        fixation.draw()
-        left_eye.draw()
-        right_eye.draw()
-        
-        for stim, pos in zip(images, positions):
-            # SYNC THE IMAGE INDEX WITH THE CIRCLE BELOW
-            # if circle contains image and gaze select!
-            visual.Circle(win, fillColor="red", radius=100)
-            stim.pos = pos
-            stim.draw()
+    while stim_time.getTime() <= DURATION and selected_index == -1:
 
-        try:
+        try:  
             Lx, Ly, Rx, Ry = mini.getEyePosition()
+        
+            Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
+            Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
+            Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+            Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+
             gaze_x = (Lx + Rx) / 2
             gaze_y = (Ly + Ry) / 2
             gaze_point = (gaze_x, gaze_y)
         except Exception:
             gaze_point = None
 
-        win.flip()
+        # Draw fixation and eye indicators
+        left_eye.pos = (Lx, Ly)
+        right_eye.pos = (Rx, Ry)
 
-       
-        if stim_time.getTime() >= DURATION:
-            clicked = True
+        # Draw all images
+        for stim, pos in zip(images, positions):
+            stim.pos = pos
+            stim.draw()
+
+        fixation.draw()
+        left_eye.draw()
+        right_eye.draw()
+        # Get gaze point
+
+        win.flip()
 
         if 'escape' in event.getKeys():
             win.close()
@@ -297,61 +317,61 @@ for trial in range(n_trials):
                 if stim.contains(gaze_point):
                     selected_index = idx
                     response_time = rt_clock.getTime()
-                    clicked = True
                     break
+    
+    end_time = rt_clock.getTime()
+    # Mouse-based fallback (optional)
+    # if mouse.getPressed()[0]:
+    #     for idx, stim in enumerate(images):
+    #         if stim.contains(mouse):
+    #             selected_index = idx
+    #             response_time = rt_clock.getTime()
+    #             break
 
-        # Fallback: mouse click selection
-        # if not clicked and mouse.getPressed()[0]:
-        #     for idx, stim in enumerate(images):
-        #         if stim.contains(mouse):
-        #             selected_index = idx
-        #             response_time = rt_clock.getTime()
-        #             clicked = True
-        #             break
-
-            # if there is a no mouse click 
-            if selected_index == -1:
-                mouse.clickReset()
-                break
-
-    if sim_path == odd_path:
-        is_correct = True
-    else:
-        is_correct = selected_index == correct_index
-        #  if selected_index == -1, set is_correct = false
-
-    # VALIDATOR
-    if selected_index != -1 and is_correct:
-        correct_sound.play()
-        win.flip()
-        core.wait(0.5)
-    elif selected_index != -1 and not is_correct:
+    # if there is a no click 
+    #  if selected_index == -1, set is_correct = false
+    if selected_index == -1:
+        is_correct = False
         msg = visual.TextStim(win=win, text='Incorrect choice', color='red')
         msg.draw()
         win.flip()
         core.wait(pause_duration)
+    elif sim_path == odd_path:
+        is_correct = True
+        correct_sound.play()
+        win.flip()
+        core.wait(0.5)
     else:
-        pass
+        is_correct = selected_index == correct_index
+        if is_correct:
+            correct_sound.play()
+            win.flip()
+            core.wait(0.5)
+        else: 
+            msg = visual.TextStim(win=win, text='Incorrect choice', color='red')
+            msg.draw()
+            win.flip()
+            core.wait(pause_duration)
 
-    with open(filename, 'a', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow([
-            # expInfo['participant'],
-            # expInfo['name'],
-            round(rt_clock.getTime(), 3),
-            round(response_time, 3),
-            category,
-            selected_index,
-            # positions[selected_index],
-            jitter_info,
-            is_correct,
-            # round(response_time, 3),
-            sim_path,
-            odd_path
-        ])
+        with open(filename, 'a', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                # expInfo['participant'],
+                # expInfo['name'],
+                round(start_time, 3),
+                round(end_time, 3),
+                category,
+                selected_index,
+                # positions[selected_index],
+                jitter_info,
+                is_correct,
+                round(end_time - start_time, 3),
+                sim_path,
+                odd_path
+            ])
 
-
-    mouse.clickReset()
+        if stim_time.getTime() >= DURATION:
+            fixed = False
 
 final_msg = visual.TextStim(win=win, text="Thank you for your participation", pos=(0, -150), color='white', height=70)
 final_msg.draw()

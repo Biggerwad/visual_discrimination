@@ -22,7 +22,8 @@ PRIMARY_MONITOR_Y = 1080
 SECONDARY_MONITOR_X = 1280
 SECONDARY_MONITOR_Y = 1024
 
-OFFSET = 50
+# OFFSET = -6
+OFFSET = (0,0)
 
 # FRAME DURATION
 DURATION = 3
@@ -37,8 +38,8 @@ mini.open()
 # set variable for generic radius
 
 positions = [
-    (-400, 400), (400, 400),
-    (-400, -400), (400, -400)
+    (-200, 200), (200, 200),
+    (-200, -200), (200, -200)
 ]
 
 psychopyVersion = '2025.1.0dev137'
@@ -157,10 +158,10 @@ right_eye = visual.Circle(win, radius=10, fillColor='blue')
 while True:
     Lx, Ly, Rx, Ry = mini.getEyePosition()
 
-    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
-    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
-    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
-    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
+    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
+    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
@@ -198,10 +199,10 @@ for trial in range(n_trials):
     fixation.draw()
     Lx, Ly, Rx, Ry = mini.getEyePosition()
 
-    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
-    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
-    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
-    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
+    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
+    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
@@ -232,10 +233,10 @@ for trial in range(n_trials):
         fixation.draw()
         Lx, Ly, Rx, Ry = mini.getEyePosition() 
         
-        Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
-        Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
-        Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
-        Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+        Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
+        Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
+        Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+        Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
         
         left_eye.pos = (Lx, Ly)
         right_eye.pos = (Rx, Ry)
@@ -280,10 +281,10 @@ for trial in range(n_trials):
         try:  
             Lx, Ly, Rx, Ry = mini.getEyePosition()
         
-            Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X 
-            Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  
-            Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
-            Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET
+            Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
+            Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  -OFFSET[0]
+            Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+            Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
 
             gaze_x = (Lx + Rx) / 2
             gaze_y = (Ly + Ry) / 2

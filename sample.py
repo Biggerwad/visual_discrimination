@@ -6,12 +6,6 @@ import csv
 import os
 from glob import glob
 
-# Next fix: Reaction time = End time - Start time
-            # Give location of target and distractor images
-            
-# updates 
-            #  setup function for gaze calculatin to call regularly
-            # 
 # === CONSTANTS ===
 
 # PRIMARY MONITOR 
@@ -141,7 +135,8 @@ def setupData(expInfo, dataDir=None):
 
 setupData(expInfo)
 # create fixation and welcome message
-fixation = visual.TextStim(win=win, text='+', color='white', height=50)
+fixation = visual.Circle(win,radius=40, fillColor=None, lineColor="white")
+cross = visual.TextStim(win=win, text='+', color='white', height=50)
 welcome_msg = visual.TextStim(
     win=win,
     text="Welcome to the visual discrimination experiment. Fixate on the cross to begin...",
@@ -152,16 +147,20 @@ welcome_msg = visual.TextStim(
 left_eye = visual.Circle(win,radius=10, fillColor='red')
 right_eye = visual.Circle(win, radius=10, fillColor='blue')
 
+# Get screen resolution function
+def getScreenRelativity(Lx, Ly, Rx, Ry)->tuple:
+    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
+    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
+    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
 
+    return [Lx, Rx, Ly, Ry]
 
 # Welcome screen loop
 while True:
     Lx, Ly, Rx, Ry = mini.getEyePosition()
 
-    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
-    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
-    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
-    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+    Lx, Rx, Ly, Ry = getScreenRelativity(Lx, Ly, Rx, Ry)
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
@@ -176,6 +175,7 @@ while True:
         gaze_point = (0, 0)
 
     fixation.draw()
+    cross.draw()
     welcome_msg.draw()
     win.flip()
 
@@ -197,12 +197,11 @@ correct_sound = sound.Sound("beep-02.wav")
 # LOAD IMAGE TIME
 for trial in range(n_trials):
     fixation.draw()
+    cross.draw()
     Lx, Ly, Rx, Ry = mini.getEyePosition()
 
-    Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
-    Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
-    Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
-    Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+    Lx, Rx, Ly, Ry = getScreenRelativity(Lx, Ly, Rx, Ry)
+
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
@@ -231,12 +230,11 @@ for trial in range(n_trials):
     # Fixate before drawing the stimuli
     while not fixed:
         fixation.draw()
+        cross.draw()
         Lx, Ly, Rx, Ry = mini.getEyePosition() 
         
-        Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
-        Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
-        Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
-        Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+        Lx, Rx, Ly, Ry = getScreenRelativity(Lx, Ly, Rx, Ry)
+
         
         left_eye.pos = (Lx, Ly)
         right_eye.pos = (Rx, Ry)
@@ -281,10 +279,8 @@ for trial in range(n_trials):
         try:  
             Lx, Ly, Rx, Ry = mini.getEyePosition()
         
-            Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
-            Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  -OFFSET[0]
-            Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
-            Ry = Ry / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
+            Lx, Rx, Ly, Ry = getScreenRelativity(Lx, Ly, Rx, Ry)
+
 
             gaze_x = (Lx + Rx) / 2
             gaze_y = (Ly + Ry) / 2
@@ -302,6 +298,7 @@ for trial in range(n_trials):
             stim.draw()
 
         fixation.draw()
+        cross.draw()
         left_eye.draw()
         right_eye.draw()
         # Get gaze point

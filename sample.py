@@ -6,6 +6,12 @@ import csv
 import os
 from glob import glob
 
+# Next fix: Reaction time = End time - Start time
+            # Give location of target and distractor images
+            
+# updates 
+            #  setup function for gaze calculatin to call regularly
+            # 
 # === CONSTANTS ===
 
 # PRIMARY MONITOR 
@@ -123,7 +129,7 @@ def setupData(expInfo, dataDir=None):
     global header
     header = ['start_time', 'end_time',
               'category', 'selected_image',
-              'jitter_var', 'correct', 'reaction_time', 'target', 'distractor']
+              'jitter_var', 'correct', 'target', 'distractor']
 
     if not os.path.exists(os.path.dirname(filename)):
         os.makedirs(os.path.dirname(filename))
@@ -135,7 +141,7 @@ def setupData(expInfo, dataDir=None):
 
 setupData(expInfo)
 # create fixation and welcome message
-fixation = visual.Circle(win,radius=40, fillColor=None, lineColor="white")
+fixation = visual.Circle(win,radius=40, fillColor=None)
 cross = visual.TextStim(win=win, text='+', color='white', height=50)
 welcome_msg = visual.TextStim(
     win=win,
@@ -147,8 +153,12 @@ welcome_msg = visual.TextStim(
 left_eye = visual.Circle(win,radius=10, fillColor='red')
 right_eye = visual.Circle(win, radius=10, fillColor='blue')
 
+def split_path(path):
+    path = path.split("\\")
+    return path[-2]
+
 # Get screen resolution function
-def getScreenRelativity(Lx, Ly, Rx, Ry)->tuple:
+def getScreenRelativity(Lx, Ly, Rx, Ry)->list:
     Lx = Lx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X - OFFSET[0]
     Rx = Rx / PRIMARY_MONITOR_X * SECONDARY_MONITOR_X  - OFFSET[0]
     Ly = Ly / PRIMARY_MONITOR_Y * SECONDARY_MONITOR_Y - OFFSET[1]
@@ -188,20 +198,19 @@ while True:
         break
 
 core.wait(0.3)
-mouse.clickReset()
 
 n_trials = len(preloaded_trials)
 pause_duration = 1.5
 correct_sound = sound.Sound("beep-02.wav")
 
-# LOAD IMAGE TIME
+
+# LOAD IMAGES
 for trial in range(n_trials):
     fixation.draw()
     cross.draw()
     Lx, Ly, Rx, Ry = mini.getEyePosition()
 
     Lx, Rx, Ly, Ry = getScreenRelativity(Lx, Ly, Rx, Ry)
-
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
@@ -215,7 +224,6 @@ for trial in range(n_trials):
 
     fixed = False
     # selected_index = -1
-    rt_clock = core.Clock()
     
     jitter_info = []
 
@@ -242,6 +250,9 @@ for trial in range(n_trials):
         right_eye.draw()
         
         win.flip()
+        
+        # begin major clock
+        rt_clock = core.Clock()
         
         try:
             gaze_x = (Lx + Rx) / 2
@@ -363,9 +374,9 @@ for trial in range(n_trials):
                 # positions[selected_index],
                 jitter_info,
                 is_correct,
-                round(end_time - start_time, 3),
-                sim_path,
-                odd_path
+                # round(end_time - start_time, 3),
+                split_path(sim_path),
+                split_path(odd_path)
             ])
 
         if stim_time.getTime() >= DURATION:

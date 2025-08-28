@@ -110,6 +110,8 @@ def permute_images():
                     sim_stims = [visual.ImageStim(win, image=mid_img, size=(2000, 2000), units='pix') for _ in range(3)]
                     odd_stim = visual.ImageStim(win, image=odd_img_path, size=(2000, 2000), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
+                print(f"Category: {category}, Folder i: {i}, Folder j: {j}")
+                print(f"Similar images: {len(similar_images)}, Odd images: {len(odd_images)}")
 
 # Function to set up the data for the experiment
 def setupData(expInfo, dataDir=None):
@@ -119,6 +121,8 @@ def setupData(expInfo, dataDir=None):
     for _ in range(LIMIT):
         random.shuffle(image_array)
         preloaded_trials.extend(image_array)
+
+    print(len(preloaded_trials))
 
     if dataDir is None:
         dataDir = _thisDir
@@ -200,9 +204,12 @@ while True:
 core.wait(0.3)
 
 n_trials = len(preloaded_trials)
+
 pause_duration = 1.5
 correct_sound = sound.Sound("beep-02.wav")
 
+# begin major clock
+rt_clock = core.Clock()
 
 # LOAD IMAGES
 for trial in range(n_trials):
@@ -251,8 +258,6 @@ for trial in range(n_trials):
         
         win.flip()
         
-        # begin major clock
-        rt_clock = core.Clock()
         
         try:
             gaze_x = (Lx + Rx) / 2
@@ -283,7 +288,7 @@ for trial in range(n_trials):
     # rt_clock = core.Clock()
     selected_index = -1
     response_time = None
-    start_time = rt_clock.getTime()
+    start_ttime = rt_clock.geTime()
 
     while stim_time.getTime() <= DURATION and selected_index == -1:
 

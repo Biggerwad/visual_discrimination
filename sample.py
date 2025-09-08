@@ -38,8 +38,8 @@ mini.open()
 # set variable for generic radius
 
 positions = [
-    (-200, 200), (200, 200),
-    (-200, -200), (200, -200)
+    (-300, 300), (300, 300),
+    (-300, -300), (300, -300)
 ]
 
 psychopyVersion = '2025.1.0dev137'
@@ -100,8 +100,8 @@ def permute_images():
 
                     # ensure the mid_img and odd_img_path are not the same
                     trial_signature = tuple(sorted([mid_img, odd_img_path]))
-                    if trial_signature in used_trial_signatures:
-                        continue
+                    # if trial_signature in used_trial_signatures:
+                    #     continue
 
                     used_trial_signatures.add(trial_signature)
 
@@ -110,8 +110,8 @@ def permute_images():
                     sim_stims = [visual.ImageStim(win, image=mid_img, size=(2000, 2000), units='pix') for _ in range(3)]
                     odd_stim = visual.ImageStim(win, image=odd_img_path, size=(2000, 2000), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
-                print(f"Category: {category}, Folder i: {i}, Folder j: {j}")
-                print(f"Similar images: {len(similar_images)}, Odd images: {len(odd_images)}")
+                # print(f"Category: {category}, Folder i: {i}, Folder j: {j}")
+                # print(f"Similar images: {len(similar_images)}, Odd images: {len(odd_images)}")
 
 # Function to set up the data for the experiment
 def setupData(expInfo, dataDir=None):
@@ -238,7 +238,7 @@ for trial in range(n_trials):
         scale_factor = random.uniform(0.8, 1.2)
         angle = random.choice([0, 10, -10, 5, -5])
         # give variable for dynamic scale factor
-        img.size = (200 * scale_factor, 200 * scale_factor)
+        img.size = (500 * scale_factor, 500 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
@@ -288,7 +288,7 @@ for trial in range(n_trials):
     # rt_clock = core.Clock()
     selected_index = -1
     response_time = None
-    start_ttime = rt_clock.geTime()
+    start_time = rt_clock.getTime()
 
     while stim_time.getTime() <= DURATION and selected_index == -1:
 

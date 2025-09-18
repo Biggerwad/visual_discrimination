@@ -27,6 +27,8 @@ OFFSET = (0,0)
 
 # FRAME DURATION
 DURATION = 3
+
+counter = 0
 # === Setup ===
 win = visual.Window(size=[1280, 1024],fullscr=True, monitor='secondMonitor', screen=1, units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
 
@@ -107,8 +109,8 @@ def permute_images():
 
                     # create 3 similar images and one odd image
                     # set variable for dynamic size factor
-                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(2000, 2000), units='pix') for _ in range(3)]
-                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(2000, 2000), units='pix')
+                    sim_stims = [visual.ImageStim(win, image=mid_img, size=(1500, 1500), units='pix') for _ in range(3)]
+                    odd_stim = visual.ImageStim(win, image=odd_img_path, size=(1500, 1500), units='pix')
                     image_array.append((sim_stims, odd_stim, mid_img, odd_img_path, category))
                 # print(f"Category: {category}, Folder i: {i}, Folder j: {j}")
                 # print(f"Similar images: {len(similar_images)}, Odd images: {len(odd_images)}")
@@ -238,7 +240,7 @@ for trial in range(n_trials):
         scale_factor = random.uniform(0.8, 1.2)
         angle = random.choice([0, 10, -10, 5, -5])
         # give variable for dynamic scale factor
-        img.size = (500 * scale_factor, 500 * scale_factor)
+        img.size = (400 * scale_factor, 400 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
@@ -257,7 +259,6 @@ for trial in range(n_trials):
         right_eye.draw()
         
         win.flip()
-        
         
         try:
             gaze_x = (Lx + Rx) / 2
@@ -320,6 +321,7 @@ for trial in range(n_trials):
         # Get gaze point
 
         win.flip()
+        counter + 1
 
         if 'escape' in event.getKeys():
             win.close()
@@ -332,7 +334,7 @@ for trial in range(n_trials):
                     selected_index = idx
                     response_time = rt_clock.getTime()
                     break
-    
+        print(counter)
     end_time = rt_clock.getTime()
     # Mouse-based fallback (optional)
     # if mouse.getPressed()[0]:

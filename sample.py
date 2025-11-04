@@ -30,7 +30,7 @@ DURATION = 3
 
 counter = 0
 # === Setup ===
-win = visual.Window(size=[1280, 1024],fullscr=True, monitor='secondMonitor', screen=1, units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
+win = visual.Window(size=[1920, 1080],fullscr=True, monitor='mainMonitor', units='pix', winType='pyglet', allowStencil=False, blendMode='avg', useFBO=True)
 
 mouse = event.Mouse(visible=True, win=win)
 
@@ -39,9 +39,11 @@ mini.open()
 
 # set variable for generic radius
 
+R = 200
+
 positions = [
-    (-300, 300), (300, 300),
-    (-300, -300), (300, -300)
+    (-R, R), (R, R),
+    (-R, -R), (R, -R)
 ]
 
 psychopyVersion = '2025.1.0dev137'
@@ -180,8 +182,8 @@ while True:
 
     left_eye.pos = (Lx, Ly)
     right_eye.pos = (Rx, Ry)
-    left_eye.draw()
-    right_eye.draw()    
+    # left_eye.draw()
+    # right_eye.draw()    
 
     try:
         gaze_x = (Lx + Rx) / 2
@@ -237,10 +239,10 @@ for trial in range(n_trials):
     jitter_info = []
 
     for img in images:
-        scale_factor = random.uniform(0.8, 1.2)
+        scale_factor = random.uniform(0.9, 1.1)
         angle = random.choice([0, 10, -10, 5, -5])
         # give variable for dynamic scale factor
-        img.size = (400 * scale_factor, 400 * scale_factor)
+        img.size = (300 * scale_factor, 300 * scale_factor)
         img.ori = angle
         jitter_info.append((round(scale_factor, 2), angle))
 
@@ -255,8 +257,8 @@ for trial in range(n_trials):
         
         left_eye.pos = (Lx, Ly)
         right_eye.pos = (Rx, Ry)
-        left_eye.draw()
-        right_eye.draw()
+        # left_eye.draw()
+        # right_eye.draw()
         
         win.flip()
         
@@ -290,6 +292,22 @@ for trial in range(n_trials):
     selected_index = -1
     response_time = None
     start_time = rt_clock.getTime()
+    # Create circular selection windows around each image
+    selection_circles = []
+    circle_radius = 100  # Adjust radius to comfortably surround the image
+
+    for pos in positions:
+        circle = visual.Circle(
+            win=win,
+            radius=circle_radius,
+            edges=128,
+            # lineColor='white',
+            fillColor=None,
+            pos=pos,
+            lineWidth=2
+        )
+
+        selection_circles.append(circle)
 
     while stim_time.getTime() <= DURATION and selected_index == -1:
 
@@ -309,15 +327,17 @@ for trial in range(n_trials):
         left_eye.pos = (Lx, Ly)
         right_eye.pos = (Rx, Ry)
 
-        # Draw all images
-        for stim, pos in zip(images, positions):
+        # Draw all images and their selection circles
+        for stim, circle, pos in zip(images, selection_circles, positions):
             stim.pos = pos
             stim.draw()
+            circle.pos = pos
+            circle.draw()
 
         fixation.draw()
         cross.draw()
-        left_eye.draw()
-        right_eye.draw()
+        # left_eye.draw()
+        # right_eye.draw()
         # Get gaze point
 
         win.flip()
@@ -329,8 +349,8 @@ for trial in range(n_trials):
 
         # Gaze-based selection
         if gaze_point:
-            for idx, stim in enumerate(images):
-                if stim.contains(gaze_point):
+            for idx, circle in enumerate(images):
+                if circle.contains(gaze_point):
                     selected_index = idx
                     response_time = rt_clock.getTime()
                     break
